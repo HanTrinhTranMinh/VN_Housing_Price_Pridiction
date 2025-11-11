@@ -12,7 +12,3 @@ Thumbs.db
 # File cấu hình của IDE/Trình soạn thảo
 .vscode/
 .idea/
-
-# File dữ liệu lớn (Bạn nên bỏ qua nếu file .csv quá lớn)
-# Nếu file .csv của bạn nhỏ (dưới 100MB), bạn có thể xóa dòng dưới
-data/*.csv
