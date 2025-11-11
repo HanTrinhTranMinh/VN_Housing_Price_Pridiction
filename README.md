@@ -58,4 +58,3 @@ HousingProject/
 ├── main.py                               (File chạy chính của toàn bộ dự án)
 ├── requirements.txt                      (Các thư viện Python cần thiết)
 ├── .gitignore                            (Các file và thư mục Git sẽ bỏ qua)
-└── LICENSE                               (Giấy phép MIT của dự án)
