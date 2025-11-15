@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from src.data_processing import load_and_preprocess_data
 from src.linear_regression import add_bias_column, normal_equation, predict
+from sklearn.linear_model import LinearRegression
 from src.evaluate import (
     mean_squared_error, 
     root_mean_squared_error, 
@@ -11,6 +12,9 @@ from src.evaluate import (
     mean_absolute_scaled_error 
 )
 from sklearn.model_selection import KFold, train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from xgboost import  XGBRegressor
+import matplotlib.pyplot as plt
 
 
 def tune_lambda_with_kfold(X, y_transformed, y_orig, lambda_values, inverse_fn, n_splits=5):
@@ -174,6 +178,99 @@ def run_training_pipeline():
     print(f"  RMSE (Lỗi Trung bình):           {rmse:.4f}")
     print(f"  MAE (Lỗi Tuyệt đối Trung bình):  {mae:.4f}")  
     print(f"  MASE (Lỗi Co giãn Trung bình):   {mase:.4f}") 
+
+    # VẼ SƠ ĐỒ
+    plt.figure(figsize=(8, 6))
+
+# Vẽ scatter điểm dự đoán
+    plt.scatter(y_test_orig, y_pred, alpha=0.7)
+
+    # Vẽ đường tham chiếu y = x
+    min_val = min(min(y_test_orig), min(y_pred))
+    max_val = max(max(y_test_orig), max(y_pred))
+
+    plt.plot([min_val, max_val], [min_val, max_val], linewidth=2)
+
+    plt.xlabel("Giá trị thật (y_test)")
+    plt.ylabel("Giá trị dự đoán (y_pred)")
+    plt.title("So sánh Giá trị Thật vs Dự đoán (Prediction Plot)")
+    plt.grid(True)
+
+    plt.show()
+ 
+
+    # So sánh với Linear Regression từ sklearn
+    lr = LinearRegression()
+    lr.fit(X_train, y_train_for_fit)   # 👉 dùng đúng target đã dùng cho mô hình tự tạo
+
+    lr_pred_transformed = lr.predict(X_test)
+    lr_pred = inverse_target_fn(lr_pred_transformed)
+
+    # -----------------------------------------------------
+    # 🔍 TÍNH TOÁN CHỈ SỐ CHO MÔ HÌNH LINEAR REGRESSION (sklearn)
+    # -----------------------------------------------------
+    lr_mse = mean_squared_error(y_test_orig, lr_pred)
+    lr_rmse = root_mean_squared_error(y_test_orig, lr_pred)
+    lr_r2 = r_squared(y_test_orig, lr_pred)
+    lr_mae = mean_absolute_error(y_test_orig, lr_pred)
+    lr_mase = mean_absolute_scaled_error(y_test_orig, lr_pred, y_train_orig)
+
+    print("\n--- KẾT QUẢ MÔ HÌNH LINEAR REGRESSION (sklearn) ---")
+    print(f"  R-squared:                      {lr_r2:.4f}")
+    print(f"  MSE:                            {lr_mse:.4f}")
+    print(f"  RMSE:                           {lr_rmse:.4f}")
+    print(f"  MAE:                            {lr_mae:.4f}")
+    print(f"  MASE:                           {lr_mase:.4f}")
+
+    # =====================================================
+    # 🎯 ĐỘ TRÙNG KHỚP GIỮA MÔ HÌNH TỰ TẠO VÀ SKLEARN
+    # =====================================================
+    diff = np.abs(y_pred - lr_pred)
+    avg_diff = diff.mean()
+    max_diff = diff.max()
+    min_diff = diff.min()
+
+    print("\n=========== ĐỘ TRÙNG KHỚP GIỮA HAI MÔ HÌNH ===========")
+    print(f"Chênh lệch trung bình (|y_self - y_sklearn|):  {avg_diff:.4f}")
+    print(f"Chênh lệch lớn nhất:                           {max_diff:.4f}")
+    print(f"Chênh lệch nhỏ nhất:                           {min_diff:.4f}")
+
+
+    # =====================================================
+    # 🎯 XGBOOST REGRESSOR — SO SÁNH MẠNH NHẤT
+    # =====================================================
+    xgb = XGBRegressor(
+        n_estimators=500,
+        learning_rate=0.05,
+        max_depth=8,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        objective="reg:squarederror",
+        tree_method="hist",
+        random_state=42,
+        n_jobs=-1
+    )
+
+
+    # Huấn luyện XGBoost (dùng target gốc)
+    xgb.fit(X_train, y_train_orig)
+
+    # Dự đoán
+    xgb_pred = xgb.predict(X_test)
+
+    # Tính toán các chỉ số
+    xgb_mse = mean_squared_error(y_test_orig, xgb_pred)
+    xgb_rmse = root_mean_squared_error(y_test_orig, xgb_pred)
+    xgb_r2 = r_squared(y_test_orig, xgb_pred)
+    xgb_mae = mean_absolute_error(y_test_orig, xgb_pred)
+    xgb_mase = mean_absolute_scaled_error(y_test_orig, xgb_pred, y_train_orig)
+
+    print("\n--- KẾT QUẢ MÔ HÌNH XGBOOST REGRESSOR ---")
+    print(f"  R-squared: {xgb_r2:.4f}")
+    print(f"  MSE:       {xgb_mse:.4f}")
+    print(f"  RMSE:      {xgb_rmse:.4f}")
+    print(f"  MAE:       {xgb_mae:.4f}")
+    print(f"  MASE:      {xgb_mase:.4f}")
 
 if __name__ == "__main__":
     run_training_pipeline()
