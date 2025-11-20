@@ -12,7 +12,6 @@ from src.evaluate import (
     mean_absolute_scaled_error 
 )
 from sklearn.model_selection import KFold, train_test_split
-from sklearn.ensemble import RandomForestRegressor
 from xgboost import  XGBRegressor
 import matplotlib.pyplot as plt
 
@@ -201,14 +200,12 @@ def run_training_pipeline():
 
     # So sánh với Linear Regression từ sklearn
     lr = LinearRegression()
-    lr.fit(X_train, y_train_for_fit)   # 👉 dùng đúng target đã dùng cho mô hình tự tạo
+    lr.fit(X_train, y_train_for_fit)   # dùng đúng target đã dùng cho mô hình tự tạo
 
     lr_pred_transformed = lr.predict(X_test)
     lr_pred = inverse_target_fn(lr_pred_transformed)
 
-    # -----------------------------------------------------
-    # 🔍 TÍNH TOÁN CHỈ SỐ CHO MÔ HÌNH LINEAR REGRESSION (sklearn)
-    # -----------------------------------------------------
+    # TÍNH TOÁN CHỈ SỐ CHO MÔ HÌNH LINEAR REGRESSION (sklearn)
     lr_mse = mean_squared_error(y_test_orig, lr_pred)
     lr_rmse = root_mean_squared_error(y_test_orig, lr_pred)
     lr_r2 = r_squared(y_test_orig, lr_pred)
@@ -222,9 +219,7 @@ def run_training_pipeline():
     print(f"  MAE:                            {lr_mae:.4f}")
     print(f"  MASE:                           {lr_mase:.4f}")
 
-    # =====================================================
-    # 🎯 ĐỘ TRÙNG KHỚP GIỮA MÔ HÌNH TỰ TẠO VÀ SKLEARN
-    # =====================================================
+    # ĐỘ TRÙNG KHỚP GIỮA MÔ HÌNH TỰ TẠO VÀ SKLEARN
     diff = np.abs(y_pred - lr_pred)
     avg_diff = diff.mean()
     max_diff = diff.max()
@@ -236,9 +231,7 @@ def run_training_pipeline():
     print(f"Chênh lệch nhỏ nhất:                           {min_diff:.4f}")
 
 
-    # =====================================================
-    # 🎯 XGBOOST REGRESSOR — SO SÁNH MẠNH NHẤT
-    # =====================================================
+    # XGBOOST REGRESSOR — SO SÁNH MẠNH NHẤT
     xgb = XGBRegressor(
         n_estimators=500,
         learning_rate=0.05,
