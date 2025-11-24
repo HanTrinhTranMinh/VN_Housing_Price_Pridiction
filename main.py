@@ -14,8 +14,8 @@ from src.evaluate import (
 from sklearn.model_selection import KFold, train_test_split
 from xgboost import  XGBRegressor
 import matplotlib.pyplot as plt
-
-
+from sklearn.linear_model import Ridge
+import re
 def tune_lambda_with_kfold(X, y_transformed, y_orig, lambda_values, inverse_fn, n_splits=5):
     """
     Chọn lambda tốt nhất bằng K-Fold CV trên dữ liệu train, đánh giá trên thang đo gốc.
@@ -196,39 +196,57 @@ def run_training_pipeline():
     plt.grid(True)
 
     plt.show()
- 
+    
+    ridge = Ridge(alpha=1.0)
 
-    # So sánh với Linear Regression từ sklearn
-    lr = LinearRegression()
-    lr.fit(X_train, y_train_for_fit)   # dùng đúng target đã dùng cho mô hình tự tạo
+    # Ridge dùng đúng target transform (log1p hoặc gốc tùy best_variant)
+    ridge.fit(X_train, y_train_for_fit)
 
-    lr_pred_transformed = lr.predict(X_test)
-    lr_pred = inverse_target_fn(lr_pred_transformed)
+    # Dự đoán
+    ridge_pred_transformed = ridge.predict(X_test)
+    ridge_pred = inverse_target_fn(ridge_pred_transformed)
 
-    # TÍNH TOÁN CHỈ SỐ CHO MÔ HÌNH LINEAR REGRESSION (sklearn)
-    lr_mse = mean_squared_error(y_test_orig, lr_pred)
-    lr_rmse = root_mean_squared_error(y_test_orig, lr_pred)
-    lr_r2 = r_squared(y_test_orig, lr_pred)
-    lr_mae = mean_absolute_error(y_test_orig, lr_pred)
-    lr_mase = mean_absolute_scaled_error(y_test_orig, lr_pred, y_train_orig)
+    # TÍNH TOÁN CHỈ SỐ
+    ridge_mse = mean_squared_error(y_test_orig, ridge_pred)
+    ridge_rmse = root_mean_squared_error(y_test_orig, ridge_pred)
+    ridge_r2 = r_squared(y_test_orig, ridge_pred)
+    ridge_mae = mean_absolute_error(y_test_orig, ridge_pred)
+    ridge_mase = mean_absolute_scaled_error(y_test_orig, ridge_pred, y_train_orig)
 
-    print("\n--- KẾT QUẢ MÔ HÌNH LINEAR REGRESSION (sklearn) ---")
-    print(f"  R-squared:                      {lr_r2:.4f}")
-    print(f"  MSE:                            {lr_mse:.4f}")
-    print(f"  RMSE:                           {lr_rmse:.4f}")
-    print(f"  MAE:                            {lr_mae:.4f}")
-    print(f"  MASE:                           {lr_mase:.4f}")
+    print("\n===== KẾT QUẢ RIDGE REGRESSION (lambda = 1) =====")
+    print(f"R-squared: {ridge_r2:.4f}")
+    print(f"MSE:       {ridge_mse:.4f}")
+    print(f"RMSE:      {ridge_rmse:.4f}")
+    print(f"MAE:       {ridge_mae:.4f}")
+    print(f"MASE:      {ridge_mase:.4f}")
 
-    # ĐỘ TRÙNG KHỚP GIỮA MÔ HÌNH TỰ TẠO VÀ SKLEARN
-    diff = np.abs(y_pred - lr_pred)
-    avg_diff = diff.mean()
-    max_diff = diff.max()
-    min_diff = diff.min()
+    # ================================
+    # SO SÁNH VỚI MÔ HÌNH TỰ CODE
+    # ================================
+    diff = np.abs(y_pred - ridge_pred)
 
-    print("\n=========== ĐỘ TRÙNG KHỚP GIỮA HAI MÔ HÌNH ===========")
-    print(f"Chênh lệch trung bình (|y_self - y_sklearn|):  {avg_diff:.4f}")
-    print(f"Chênh lệch lớn nhất:                           {max_diff:.4f}")
-    print(f"Chênh lệch nhỏ nhất:                           {min_diff:.4f}")
+    print("\n===== ĐỘ TRÙNG KHỚP (SELF vs RIDGE) =====")
+    print(f"Chênh lệch trung bình: {diff.mean():.4f}")
+    print(f"Chênh lệch lớn nhất:   {diff.max():.4f}")
+    print(f"Chênh lệch nhỏ nhất:   {diff.min():.4f}")
+    # ================================
+    # BIỂU ĐỒ SO SÁNH CUSTOM vs RIDGE
+    # ================================
+    plt.figure(figsize=(8, 6))
+
+    plt.scatter(y_test_orig, y_pred, alpha=0.6, label="Custom Model", s=45)
+    plt.scatter(y_test_orig, ridge_pred, alpha=0.6, label="Ridge Regression (λ=1)", s=45)
+
+    min_val = min(min(y_test_orig), min(y_pred), min(ridge_pred))
+    max_val = max(max(y_test_orig), max(y_pred), max(ridge_pred))
+    plt.plot([min_val, max_val], [min_val, max_val], linewidth=2)
+
+    plt.xlabel("Giá trị thật (y_test)")
+    plt.ylabel("Giá trị dự đoán")
+    plt.title("So sánh Custom Model vs Ridge Regression (lambda = 1)")
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
     # XGBOOST REGRESSOR — SO SÁNH MẠNH NHẤT

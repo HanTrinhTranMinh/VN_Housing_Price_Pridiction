@@ -1,13 +1,81 @@
 import numpy as np
 import pandas as pd
-
+import re
 def engineer_address_features(df):
-    """Tách 'City' và 'District' từ 'Address'."""
-    print("Đang xử lý cột 'Address'...")
-    address_parts = df['Address'].fillna('').str.split(', ')
+    """
+    Tách 'City' và 'District' từ 'Address' + chuẩn hóa tên tỉnh/thành và quận/huyện.
+    Gồm các bước:
+      - Xóa dấu chấm cuối
+      - Chuẩn hóa viết tắt TP.HCM, HCM, Ho Chi Minh City → Ho Chi Minh
+      - Chuẩn hóa HN, Hanoi → Ha Noi
+      - Chuẩn hóa District (Q, Quan, H, Huyen…)
+    """
+
+    # ---------------------------
+    # Bước 1: Làm sạch Address
+    # ---------------------------
+    df['Address_clean'] = (
+        df['Address']
+        .astype(str)
+        .str.strip()
+        .str.replace(r'\.+$', '', regex=True)  # xoá dấu . cuối câu
+    )
+
+    # ---------------------------
+    # Bước 2: Tách District & City
+    # ---------------------------
+    address_parts = df['Address_clean'].str.split(r',\s*')
+
     df['City'] = address_parts.str[-1].fillna('Unknown')
     df['District'] = address_parts.str[-2].fillna('Unknown')
-    print("Xử lý 'Address' thành 'City' và 'District' thành công.")
+
+    # ---------------------------
+    # Bước 3: Chuẩn hóa City
+    # ---------------------------
+    city_map = {
+        r'^(tp\.?\s*hcm|hcm|ho chi minh|ho chi minh city)$': "Ho Chi Minh",
+        r'^(hn|ha noi|hanoi)$': "Ha Noi",
+        r'^da nang$': "Da Nang",
+        r'^can tho$': "Can Tho",
+        r'^gia lai$': "Gia Lai"
+    }
+
+    def normalize_city(c):
+        c = c.lower().strip().replace('.', '')
+
+        for pattern, value in city_map.items():
+            if re.match(pattern, c):
+                return value
+
+        # Mặc định: viết hoa chữ cái đầu
+        return c.title()
+
+    df['City'] = df['City'].apply(normalize_city)
+
+    # ---------------------------
+    # Bước 4: Chuẩn hóa District
+    # ---------------------------
+    def normalize_district(d):
+        d = d.lower().strip().replace('.', '')
+
+        # chuẩn hóa quan
+        d = re.sub(r'^(q|quan)\s*', 'Quan ', d)
+        # chuẩn hóa huyen
+        d = re.sub(r'^(h|huyen)\s*', 'Huyen ', d)
+        # chuẩn hóa thi xa
+        d = re.sub(r'^(tx|thixa)\s*', 'Thi Xa ', d)
+        # tp
+        d = re.sub(r'^(tp)\s*', 'TP ', d)
+
+        return d.title()
+
+    df['District'] = df['District'].apply(normalize_district)
+
+    # ---------------------------
+    # Hoàn tất
+    # ---------------------------
+    df = df.drop(columns=['Address_clean'], errors='ignore')
+    print("✓ Hoàn tất chuẩn hóa Address, City, District.")
     return df
 
 def create_indicator_features(df, cols_for_indicator):
