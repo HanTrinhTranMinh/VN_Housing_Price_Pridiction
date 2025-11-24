@@ -10,10 +10,6 @@ def engineer_address_features(df):
       - Chuẩn hóa HN, Hanoi → Ha Noi
       - Chuẩn hóa District (Q, Quan, H, Huyen…)
     """
-
-    # ---------------------------
-    # Bước 1: Làm sạch Address
-    # ---------------------------
     df['Address_clean'] = (
         df['Address']
         .astype(str)
@@ -21,17 +17,13 @@ def engineer_address_features(df):
         .str.replace(r'\.+$', '', regex=True)  # xoá dấu . cuối câu
     )
 
-    # ---------------------------
-    # Bước 2: Tách District & City
-    # ---------------------------
+
     address_parts = df['Address_clean'].str.split(r',\s*')
 
     df['City'] = address_parts.str[-1].fillna('Unknown')
     df['District'] = address_parts.str[-2].fillna('Unknown')
 
-    # ---------------------------
-    # Bước 3: Chuẩn hóa City
-    # ---------------------------
+    
     city_map = {
         r'^(tp\.?\s*hcm|hcm|ho chi minh|ho chi minh city)$': "Ho Chi Minh",
         r'^(hn|ha noi|hanoi)$': "Ha Noi",
@@ -47,14 +39,10 @@ def engineer_address_features(df):
             if re.match(pattern, c):
                 return value
 
-        # Mặc định: viết hoa chữ cái đầu
         return c.title()
 
     df['City'] = df['City'].apply(normalize_city)
 
-    # ---------------------------
-    # Bước 4: Chuẩn hóa District
-    # ---------------------------
     def normalize_district(d):
         d = d.lower().strip().replace('.', '')
 
@@ -71,9 +59,6 @@ def engineer_address_features(df):
 
     df['District'] = df['District'].apply(normalize_district)
 
-    # ---------------------------
-    # Hoàn tất
-    # ---------------------------
     df = df.drop(columns=['Address_clean'], errors='ignore')
     print("✓ Hoàn tất chuẩn hóa Address, City, District.")
     return df
